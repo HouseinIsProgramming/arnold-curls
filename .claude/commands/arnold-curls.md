@@ -1,4 +1,4 @@
-# API Flow Runner
+# Arnold Curls Runner
 
 Run GraphQL API flows step-by-step with validation.
 

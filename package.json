@@ -1,5 +1,5 @@
 {
-  "name": "api-flow",
+  "name": "arnold-curls",
   "version": "1.0.0",
   "description": "Claude-first GraphQL API flow runner - execute API calls step-by-step with context passing",
   "type": "module",
@@ -10,8 +10,8 @@
     "build": "mkdir -p bin && bun build src/run.ts --compile --outfile bin/run && bun build src/status.ts --compile --outfile bin/status"
   },
   "bin": {
-    "api-flow-run": "./bin/run",
-    "api-flow-status": "./bin/status"
+    "arnold-curls-run": "./bin/run",
+    "arnold-curls-status": "./bin/status"
   },
   "keywords": [
     "graphql",

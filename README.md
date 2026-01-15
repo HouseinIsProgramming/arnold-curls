@@ -1,4 +1,4 @@
-# api-flow
+# arnold-curls
 
 A Claude-first GraphQL API flow runner. Execute API calls step-by-step with context passing and response validation.
 
@@ -14,7 +14,7 @@ Claude AI manipulates a `flow.json` file directly using its native Read/Write to
 
 ```bash
 git clone <repo-url>
-cd api-flow
+cd arnold-curls
 bun install
 ```
 
@@ -168,7 +168,7 @@ After step 1 runs, `${token}` in headers is replaced with the extracted value.
 
 ## Claude Code Integration
 
-This repo includes `.claude/commands/api-flow.md` - the `/api-flow` skill works automatically when you clone this repo.
+This repo includes `.claude/commands/arnold-curls.md` - the `/arnold-curls` skill works automatically when you clone this repo.
 
 ## Testing
 
