@@ -1,17 +1,32 @@
 # api-flow
 
-A Claude-first GraphQL API flow runner. Execute API calls step-by-step with context passing between steps.
+A Claude-first GraphQL API flow runner. Execute API calls step-by-step with context passing and response validation.
 
 ## Philosophy
 
 Claude AI manipulates a `flow.json` file directly using its native Read/Write tools. This tool only does what Claude can't: execute HTTP requests.
 
-**~100 lines of code. No CLI flags. No complex interfaces.**
+**~150 lines of code. No CLI flags. No complex interfaces.**
 
 ## Installation
 
+### With Bun (development)
+
 ```bash
+git clone <repo-url>
+cd api-flow
 bun install
+```
+
+### Standalone executables (team sharing)
+
+```bash
+# Build binaries (no bun dependency needed to run)
+bun run build
+
+# Binaries created in bin/
+./bin/run      # Run next step
+./bin/status   # Check status
 ```
 
 ## Usage
@@ -31,8 +46,9 @@ Create `flow.json` in your project root:
   "steps": [
     {
       "name": "Login",
-      "query": "mutation { login(user: \"admin\", pass: \"secret\") { token } }",
+      "query": "mutation { login(user: \"admin\", pass: \"secret\") { token success } }",
       "extractToContext": { "token": "data.login.token" },
+      "expected": { "data": { "login": { "success": true } } },
       "status": "pending"
     },
     {
@@ -47,15 +63,13 @@ Create `flow.json` in your project root:
 ### 2. Run steps
 
 ```bash
-bun run run      # Run next pending step
-bun run status   # Check flow status
-```
+# With bun
+bun src/run.ts      # Run next pending step
+bun src/status.ts   # Check flow status
 
-Or directly:
-
-```bash
-bun src/run.ts
-bun src/status.ts
+# Or with bundled executables
+./bin/run
+./bin/status
 ```
 
 ## Flow File Schema
@@ -64,7 +78,7 @@ bun src/status.ts
 |-------|------|-------------|
 | `name` | string | Flow name for display |
 | `baseUrl` | string | GraphQL endpoint URL |
-| `headers` | object | Optional HTTP headers (supports `${var}` substitution) |
+| `headers` | object | HTTP headers (supports `${var}` substitution) |
 | `context` | object | Shared state between steps |
 | `steps` | array | List of steps to execute |
 
@@ -76,16 +90,30 @@ bun src/status.ts
 | `query` | string | GraphQL query/mutation |
 | `variables` | object | Optional GraphQL variables |
 | `extractToContext` | object | Extract values from response to context |
-| `status` | string | `"pending"`, `"done"`, or `"error"` |
+| `expected` | object | Validate response (subset match) |
+| `status` | string | `pending`, `done`, `error`, or `failed` |
+
+## Response Validation
+
+Add `expected` to validate responses:
+
+```json
+{
+  "name": "Login",
+  "query": "mutation { login { success } }",
+  "expected": { "data": { "login": { "success": true } } },
+  "status": "pending"
+}
+```
+
+- **Subset matching**: Response must contain expected values (extra fields OK)
+- **On mismatch**: Status becomes `failed` with `validationError` explaining why
+- **Context extraction still runs**: Data exists, just didn't match expectations
 
 ## Context Variables
 
-Use `${varName}` syntax to reference context values in:
-- Queries
-- Variables
-- Headers
+Use `${varName}` in queries, variables, or headers:
 
-Example:
 ```json
 {
   "headers": { "Authorization": "Bearer ${token}" },
@@ -105,7 +133,7 @@ Example:
 }
 ```
 
-After step 1 runs, `${token}` in headers gets replaced with the extracted value.
+After step 1 runs, `${token}` in headers is replaced with the extracted value.
 
 ## Output Format
 
@@ -127,36 +155,20 @@ After step 1 runs, `${token}` in headers gets replaced with the extracted value.
 ```json
 {
   "name": "My Flow",
-  "baseUrl": "http://localhost:3000/graphql",
-  "context": { "token": "abc123" },
   "steps": [
     { "index": 0, "name": "Login", "status": "done", "duration": 234 },
     { "index": 1, "name": "Get Data", "status": "pending" }
   ],
   "pending": 1,
   "done": 1,
+  "failed": 0,
   "errors": 0
 }
 ```
 
 ## Claude Code Integration
 
-Add to `.claude/commands/api-flow.md`:
-
-```markdown
-# API Flow
-
-Run GraphQL flows step-by-step.
-
-## Commands
-- `bun src/run.ts` - Run next pending step
-- `bun src/status.ts` - Show flow status
-
-## Workflow
-1. Write flow.json with steps
-2. Run steps one by one
-3. Check results, modify flow as needed
-```
+This repo includes `.claude/commands/api-flow.md` - the `/api-flow` skill works automatically when you clone this repo.
 
 ## Testing
 

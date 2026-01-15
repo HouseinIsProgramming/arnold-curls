@@ -1,4 +1,5 @@
 node_modules/
+bin/
 flow.json
 bun.lock
 *.log

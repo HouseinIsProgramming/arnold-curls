@@ -6,7 +6,12 @@
   "scripts": {
     "run": "bun src/run.ts",
     "status": "bun src/status.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "build": "mkdir -p bin && bun build src/run.ts --compile --outfile bin/run && bun build src/status.ts --compile --outfile bin/status"
+  },
+  "bin": {
+    "api-flow-run": "./bin/run",
+    "api-flow-status": "./bin/status"
   },
   "keywords": [
     "graphql",
