@@ -1,16 +1,25 @@
 # arnold-curls
 
-A Claude-first GraphQL API flow runner. Execute API calls step-by-step with context passing and response validation.
+GraphQL API flow runner with multi-set support. Execute flows step-by-step with context passing and response validation.
 
-## Philosophy
+## Quick Start
 
-Claude AI manipulates a `flow.json` file directly using its native Read/Write tools. This tool only does what Claude can't: execute HTTP requests.
+```bash
+# Initialize a set
+bun run arnold init my-api
 
-**~150 lines of code. No CLI flags. No complex interfaces.**
+# Edit .arnold/sets/my-api.json with your steps
+# Run steps one by one
+bun run arnold run my-api
+
+# Or run all at once
+bun run arnold run my-api --full
+
+# Check status
+bun run arnold status my-api
+```
 
 ## Installation
-
-### With Bun (development)
 
 ```bash
 git clone <repo-url>
@@ -18,97 +27,74 @@ cd arnold-curls
 bun install
 ```
 
-### Standalone executables (team sharing)
+### Build standalone binary
 
 ```bash
-# Build binaries (no bun dependency needed to run)
 bun run build
-
-# Binaries created in bin/
-./bin/run      # Run next step
-./bin/status   # Check status
+./bin/arnold list
 ```
 
-## Usage
+## Commands
 
-### 1. Create a flow file
+```bash
+arnold init <name>              # Create empty set
+arnold init <name> --from <f>   # Create from existing JSON file
 
-Create `flow.json` in your project root:
+arnold run <name>               # Run next pending step
+arnold run <name> --full        # Run ALL steps, stop on first error
+
+arnold status <name>            # Show set status
+arnold list                     # List all sets
+arnold reset <name>             # Clear execution state for set
+arnold reset --all              # Clear ALL execution state
+```
+
+## File Structure
+
+```
+.arnold/
+├── sets/
+│   ├── auth-flow.json     # Set definition (committed)
+│   └── user-crud.json     # Set definition (committed)
+├── state.json             # Execution state (gitignored)
+└── .env                   # Secrets (gitignored)
+```
+
+## Set Definition
+
+`.arnold/sets/<name>.json`:
 
 ```json
 {
-  "name": "My API Flow",
-  "baseUrl": "http://localhost:3000/graphql",
+  "name": "auth-flow",
+  "baseUrl": "https://api.example.com/graphql",
   "headers": {
     "Authorization": "Bearer ${token}"
   },
-  "context": {},
   "steps": [
     {
       "name": "Login",
       "query": "mutation { login(user: \"admin\", pass: \"secret\") { token success } }",
       "extractToContext": { "token": "data.login.token" },
-      "expected": { "data": { "login": { "success": true } } },
-      "status": "pending"
+      "expected": { "data": { "login": { "success": true } } }
     },
     {
-      "name": "Get Data",
-      "query": "query { items { id name } }",
-      "status": "pending"
+      "name": "Get Profile",
+      "query": "query { me { id name } }"
     }
   ]
 }
 ```
 
-### 2. Run steps
+### Step Fields
 
-```bash
-# With bun
-bun src/run.ts      # Run next pending step
-bun src/status.ts   # Check flow status
-
-# Or with bundled executables
-./bin/run
-./bin/status
-```
-
-## Flow File Schema
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | string | Flow name for display |
-| `baseUrl` | string | GraphQL endpoint URL |
-| `headers` | object | HTTP headers (supports `${var}` substitution) |
-| `context` | object | Shared state between steps |
-| `steps` | array | List of steps to execute |
-
-### Step Schema
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | string | Step name for display |
-| `query` | string | GraphQL query/mutation |
-| `variables` | object | Optional GraphQL variables |
-| `extractToContext` | object | Extract values from response to context |
-| `expected` | object | Validate response (subset match) |
-| `status` | string | `pending`, `done`, `error`, or `failed` |
-
-## Response Validation
-
-Add `expected` to validate responses:
-
-```json
-{
-  "name": "Login",
-  "query": "mutation { login { success } }",
-  "expected": { "data": { "login": { "success": true } } },
-  "status": "pending"
-}
-```
-
-- **Subset matching**: Response must contain expected values (extra fields OK)
-- **On mismatch**: Status becomes `failed` with `validationError` explaining why
-- **Context extraction still runs**: Data exists, just didn't match expectations
+| Field | Description |
+|-------|-------------|
+| `name` | Step display name |
+| `query` | GraphQL query/mutation |
+| `variables` | Optional query variables |
+| `extractToContext` | Extract values to context for later steps |
+| `expected` | Validate response (subset match) |
 
 ## Context Variables
 
@@ -121,68 +107,102 @@ Use `${varName}` in queries, variables, or headers:
     {
       "name": "Login",
       "query": "mutation { login { token } }",
-      "extractToContext": { "token": "data.login.token" },
-      "status": "pending"
+      "extractToContext": { "token": "data.login.token" }
     },
     {
       "name": "Protected Query",
-      "query": "query { secretData { value } }",
-      "status": "pending"
+      "query": "query { secretData { value } }"
     }
   ]
 }
 ```
 
-After step 1 runs, `${token}` in headers is replaced with the extracted value.
+## Environment Variables
 
-## Environment Variables (.arnold)
-
-Create a `.arnold` file for machine-specific secrets:
+Create `.arnold/.env` for secrets:
 
 ```
 API_KEY=your-api-key
 AUTH_TOKEN=bearer-token
-# Comments are supported
+# Comments supported
 ```
 
-- `.arnold` values **override** `flow.context` values
-- Add `.arnold` to `.gitignore` (contains secrets)
-- Use `${API_KEY}` syntax in queries, headers, or variables
+- `.env` values override context values
+- Add to `.gitignore` (contains secrets)
 
-## Output Format
+## Output Format (JSON)
 
-### Run output
-
+### run (single step)
 ```json
 {
   "step": "Login",
+  "index": 0,
   "status": "done",
   "duration": 234,
-  "result": { "data": { "login": { "token": "abc123" } } },
-  "context": { "token": "abc123" },
+  "result": { "data": { "login": { "token": "abc" } } },
+  "context": { "token": "abc" },
   "remaining": 1
 }
 ```
 
-### Status output
-
+### run --full (success)
 ```json
 {
-  "name": "My Flow",
-  "steps": [
-    { "index": 0, "name": "Login", "status": "done", "duration": 234 },
-    { "index": 1, "name": "Get Data", "status": "pending" }
-  ],
-  "pending": 1,
-  "done": 1,
-  "failed": 0,
-  "errors": 0
+  "set": "auth-flow",
+  "status": "done",
+  "steps": [...],
+  "duration": 567
 }
 ```
 
-## Claude Code Integration
+### run --full (error)
+```json
+{
+  "set": "auth-flow",
+  "status": "error",
+  "stoppedAt": 1,
+  "error": "connection refused",
+  "completedSteps": [...]
+}
+```
 
-This repo includes `.claude/commands/arnold-curls.md` - the `/arnold-curls` skill works automatically when you clone this repo.
+### status
+```json
+{
+  "name": "auth-flow",
+  "baseUrl": "...",
+  "pending": 2,
+  "done": 1,
+  "failed": 0,
+  "errors": 0,
+  "steps": [...]
+}
+```
+
+### list
+```json
+{
+  "sets": [
+    { "name": "auth-flow", "pending": 2, "done": 1, "failed": 0, "errors": 0 }
+  ]
+}
+```
+
+## Response Validation
+
+Add `expected` for subset matching:
+
+```json
+{
+  "name": "Login",
+  "query": "mutation { login { success } }",
+  "expected": { "data": { "login": { "success": true } } }
+}
+```
+
+- Response must contain expected values (extra fields OK)
+- On mismatch: status becomes `failed` with `validationError`
+- Context extraction still runs (data exists)
 
 ## Testing
 

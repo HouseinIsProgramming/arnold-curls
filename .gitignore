@@ -1,8 +1,13 @@
 node_modules/
 bin/
-flow.json
 bun.lock
 *.log
 .DS_Store
 .serena/
-.arnold
+
+# Arnold state and secrets (execution state, not definitions)
+.arnold/state.json
+.arnold/.env
+
+# Legacy
+flow.json

@@ -1,44 +1,48 @@
-# Arnold Curls Runner
+# Arnold Curls
 
-Run GraphQL API flows step-by-step with validation.
+GraphQL API flow runner with multi-set support.
 
 ## Commands
 
 ```bash
-bun src/run.ts      # Run next pending step
-bun src/status.ts   # Show flow status
+bun run arnold init <name>              # Create empty set
+bun run arnold init <name> --from <f>   # Create from existing JSON
+
+bun run arnold run <name>               # Run next pending step
+bun run arnold run <name> --full        # Run ALL steps, stop on error
+
+bun run arnold status <name>            # Show set status
+bun run arnold list                     # List all sets
+bun run arnold reset <name>             # Clear state for set
+bun run arnold reset --all              # Clear ALL state
 ```
 
-Or if bundled:
-```bash
-./bin/run           # Run next pending step
-./bin/status        # Show flow status
+## File Structure
+
+```
+.arnold/
+├── sets/<name>.json   # Set definitions (committed)
+├── state.json         # Execution state (gitignored)
+└── .env               # Secrets (gitignored)
 ```
 
-## Workflow
+## Set Definition Schema
 
-1. **Create flow.json** with your steps
-2. **Run steps** one by one with `bun src/run.ts`
-3. **Check results** and modify flow as needed
-4. **Validate responses** using the `expected` field
-
-## Flow Schema
+`.arnold/sets/<name>.json`:
 
 ```json
 {
-  "name": "My API Flow",
-  "baseUrl": "http://localhost:3000/graphql",
+  "name": "auth-flow",
+  "baseUrl": "https://api.example.com/graphql",
   "headers": {
     "Authorization": "Bearer ${token}"
   },
-  "context": {},
   "steps": [
     {
       "name": "Login",
-      "query": "mutation { login { token success } }",
+      "query": "mutation { login(user: \"admin\") { token success } }",
       "extractToContext": { "token": "data.login.token" },
-      "expected": { "data": { "login": { "success": true } } },
-      "status": "pending"
+      "expected": { "data": { "login": { "success": true } } }
     }
   ]
 }
@@ -53,21 +57,16 @@ Or if bundled:
 | `variables` | Optional query variables |
 | `extractToContext` | Extract values to context for later steps |
 | `expected` | Validate response (subset match) |
-| `status` | `pending`, `done`, `error`, or `failed` |
 
 ## Context Variables
 
-Use `${varName}` in queries, variables, or headers:
-- Login extracts `token` → `${token}` available in headers
-- Create resource extracts `id` → `${id}` available in next steps
+Use `${varName}` in queries, variables, or headers. Values extracted via `extractToContext` are available in subsequent steps.
 
-## Environment Variables (.arnold)
+## Environment Variables
 
-Create a `.arnold` file for secrets (not committed to git):
+Create `.arnold/.env` for secrets (gitignored):
 
 ```
 API_KEY=your-api-key
 AUTH_TOKEN=bearer-token
 ```
-
-`.arnold` values override `flow.context` values.
