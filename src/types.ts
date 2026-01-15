@@ -20,3 +20,4 @@ export interface Flow {
 }
 
 export const FLOW_FILE = "flow.json";
+export const ARNOLD_FILE = ".arnold";

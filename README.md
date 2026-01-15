@@ -135,6 +135,20 @@ Use `${varName}` in queries, variables, or headers:
 
 After step 1 runs, `${token}` in headers is replaced with the extracted value.
 
+## Environment Variables (.arnold)
+
+Create a `.arnold` file for machine-specific secrets:
+
+```
+API_KEY=your-api-key
+AUTH_TOKEN=bearer-token
+# Comments are supported
+```
+
+- `.arnold` values **override** `flow.context` values
+- Add `.arnold` to `.gitignore` (contains secrets)
+- Use `${API_KEY}` syntax in queries, headers, or variables
+
 ## Output Format
 
 ### Run output

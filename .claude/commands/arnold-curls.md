@@ -60,3 +60,14 @@ Or if bundled:
 Use `${varName}` in queries, variables, or headers:
 - Login extracts `token` → `${token}` available in headers
 - Create resource extracts `id` → `${id}` available in next steps
+
+## Environment Variables (.arnold)
+
+Create a `.arnold` file for secrets (not committed to git):
+
+```
+API_KEY=your-api-key
+AUTH_TOKEN=bearer-token
+```
+
+`.arnold` values override `flow.context` values.

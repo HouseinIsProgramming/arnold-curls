@@ -1,5 +1,29 @@
 import type { Flow } from "./types";
-import { FLOW_FILE } from "./types";
+import { FLOW_FILE, ARNOLD_FILE } from "./types";
+
+async function loadArnoldEnv(): Promise<Record<string, string>> {
+  const file = Bun.file(ARNOLD_FILE);
+  if (!(await file.exists())) {
+    return {};
+  }
+
+  const content = await file.text();
+  const env: Record<string, string> = {};
+
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+
+    const eqIndex = trimmed.indexOf("=");
+    if (eqIndex > 0) {
+      const key = trimmed.slice(0, eqIndex).trim();
+      const value = trimmed.slice(eqIndex + 1).trim();
+      env[key] = value;
+    }
+  }
+
+  return env;
+}
 
 async function main() {
   const file = Bun.file(FLOW_FILE);
@@ -9,6 +33,10 @@ async function main() {
   }
 
   const flow: Flow = await file.json();
+
+  // Load .arnold env vars (override context)
+  const arnoldEnv = await loadArnoldEnv();
+  flow.context = { ...flow.context, ...arnoldEnv };
 
   const stepIndex = flow.steps.findIndex(s => s.status === "pending");
   if (stepIndex === -1) {
