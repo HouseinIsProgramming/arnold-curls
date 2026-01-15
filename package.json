@@ -1,0 +1,24 @@
+{
+  "name": "api-flow",
+  "version": "1.0.0",
+  "description": "Claude-first GraphQL API flow runner - execute API calls step-by-step with context passing",
+  "type": "module",
+  "scripts": {
+    "run": "bun src/run.ts",
+    "status": "bun src/status.ts",
+    "test": "bun test"
+  },
+  "keywords": [
+    "graphql",
+    "api",
+    "flow",
+    "claude",
+    "ai",
+    "testing"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

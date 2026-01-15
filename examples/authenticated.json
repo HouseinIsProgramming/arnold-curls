@@ -1,0 +1,42 @@
+{
+  "name": "Authenticated API Flow",
+  "baseUrl": "http://localhost:3000/graphql",
+  "headers": {
+    "Authorization": "Bearer ${token}"
+  },
+  "context": {},
+  "steps": [
+    {
+      "name": "Login",
+      "query": "mutation Login($username: String!, $password: String!) { login(username: $username, password: $password) { token user { id email } } }",
+      "variables": {
+        "username": "admin",
+        "password": "password123"
+      },
+      "extractToContext": {
+        "token": "data.login.token",
+        "userId": "data.login.user.id"
+      },
+      "status": "pending"
+    },
+    {
+      "name": "Get Current User",
+      "query": "query { me { id email roles } }",
+      "status": "pending"
+    },
+    {
+      "name": "Update Profile",
+      "query": "mutation UpdateProfile($id: ID!, $name: String!) { updateUser(id: $id, name: $name) { id name } }",
+      "variables": {
+        "id": "${userId}",
+        "name": "Updated Name"
+      },
+      "status": "pending"
+    },
+    {
+      "name": "Logout",
+      "query": "mutation { logout { success } }",
+      "status": "pending"
+    }
+  ]
+}

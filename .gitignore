@@ -1,0 +1,5 @@
+node_modules/
+flow.json
+bun.lock
+*.log
+.DS_Store

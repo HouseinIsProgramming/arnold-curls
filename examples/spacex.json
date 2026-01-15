@@ -1,0 +1,24 @@
+{
+  "name": "SpaceX API Demo",
+  "baseUrl": "https://spacex-production.up.railway.app/",
+  "context": {},
+  "steps": [
+    {
+      "name": "Get Company Info",
+      "query": "{ company { name ceo founded employees } }",
+      "extractToContext": { "companyName": "data.company.name" },
+      "status": "pending"
+    },
+    {
+      "name": "Get Rockets",
+      "query": "{ rockets(limit: 3) { id name type active } }",
+      "extractToContext": { "firstRocketId": "data.rockets.0.id" },
+      "status": "pending"
+    },
+    {
+      "name": "Get Recent Launches",
+      "query": "{ launchesPast(limit: 5) { mission_name launch_date_local launch_success } }",
+      "status": "pending"
+    }
+  ]
+}
