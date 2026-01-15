@@ -20,9 +20,11 @@ async function main() {
       status: s.status,
       duration: s.duration,
       error: s.error,
+      validationError: s.validationError,
     })),
     pending: flow.steps.filter(s => s.status === "pending").length,
     done: flow.steps.filter(s => s.status === "done").length,
+    failed: flow.steps.filter(s => s.status === "failed").length,
     errors: flow.steps.filter(s => s.status === "error").length,
   };
 

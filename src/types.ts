@@ -3,9 +3,11 @@ export interface FlowStep {
   query: string;
   variables?: Record<string, unknown>;
   extractToContext?: Record<string, string>;
-  status: "pending" | "done" | "error";
+  expected?: Record<string, unknown>;
+  status: "pending" | "done" | "error" | "failed";
   result?: unknown;
   error?: string;
+  validationError?: string;
   duration?: number;
 }
 

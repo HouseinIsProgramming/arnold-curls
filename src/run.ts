@@ -47,9 +47,22 @@ async function main() {
       step.error = JSON.stringify(data.errors);
       step.result = data;
     } else {
-      step.status = "done";
       step.result = data;
 
+      // Validate expected if present
+      if (step.expected) {
+        const validation = validateExpected(step.expected, data);
+        if (!validation.valid) {
+          step.status = "failed";
+          step.validationError = validation.error;
+        } else {
+          step.status = "done";
+        }
+      } else {
+        step.status = "done";
+      }
+
+      // Extract to context even on failure (data exists)
       if (step.extractToContext) {
         for (const [key, path] of Object.entries(step.extractToContext)) {
           flow.context[key] = getPath(data, path);
@@ -72,6 +85,7 @@ async function main() {
     duration: step.duration,
     result: step.result,
     error: step.error,
+    validationError: step.validationError,
     context: flow.context,
     remaining: flow.steps.filter(s => s.status === "pending").length,
   }, null, 2));
@@ -88,6 +102,42 @@ function getPath(obj: unknown, path: string): unknown {
     }
     return undefined;
   }, obj);
+}
+
+function validateExpected(
+  expected: unknown,
+  actual: unknown,
+  path = ""
+): { valid: boolean; error?: string } {
+  // Primitive comparison
+  if (typeof expected !== "object" || expected === null) {
+    if (expected !== actual) {
+      return {
+        valid: false,
+        error: `Expected ${path || "value"} to be ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`,
+      };
+    }
+    return { valid: true };
+  }
+
+  // Actual must also be an object
+  if (typeof actual !== "object" || actual === null) {
+    return {
+      valid: false,
+      error: `Expected ${path || "value"} to be an object, got ${JSON.stringify(actual)}`,
+    };
+  }
+
+  // Check each expected key exists and matches in actual
+  for (const [key, expectedValue] of Object.entries(expected)) {
+    const actualValue = (actual as Record<string, unknown>)[key];
+    const newPath = path ? `${path}.${key}` : key;
+
+    const result = validateExpected(expectedValue, actualValue, newPath);
+    if (!result.valid) return result;
+  }
+
+  return { valid: true };
 }
 
 main();
