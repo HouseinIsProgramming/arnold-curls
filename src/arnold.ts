@@ -1,6 +1,7 @@
+#!/usr/bin/env node
 import type { SetDefinition, SetState, GlobalState, StepState } from "./types";
-import { ARNOLD_DIR, SETS_DIR, STATE_FILE, ENV_FILE } from "./types";
-import { mkdir } from "fs/promises";
+import { SETS_DIR, STATE_FILE, ENV_FILE } from "./types";
+import { mkdir, readFile, writeFile, readdir, access } from "fs/promises";
 
 // ============================================================================
 // Utility functions
@@ -15,15 +16,23 @@ function err(message: string): never {
   process.exit(1);
 }
 
+async function exists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function ensureDirs(): Promise<void> {
   await mkdir(SETS_DIR, { recursive: true });
 }
 
 async function loadEnv(): Promise<Record<string, string>> {
-  const file = Bun.file(ENV_FILE);
-  if (!(await file.exists())) return {};
+  if (!(await exists(ENV_FILE))) return {};
 
-  const content = await file.text();
+  const content = await readFile(ENV_FILE, "utf-8");
   const env: Record<string, string> = {};
 
   for (const line of content.split("\n")) {
@@ -38,24 +47,23 @@ async function loadEnv(): Promise<Record<string, string>> {
 }
 
 async function loadState(): Promise<GlobalState> {
-  const file = Bun.file(STATE_FILE);
-  if (!(await file.exists())) return {};
-  return file.json();
+  if (!(await exists(STATE_FILE))) return {};
+  return JSON.parse(await readFile(STATE_FILE, "utf-8"));
 }
 
 async function saveState(state: GlobalState): Promise<void> {
-  await Bun.write(STATE_FILE, JSON.stringify(state, null, 2));
+  await writeFile(STATE_FILE, JSON.stringify(state, null, 2));
 }
 
 async function loadSet(name: string): Promise<SetDefinition> {
-  const file = Bun.file(`${SETS_DIR}/${name}.json`);
-  if (!(await file.exists())) err(`Set '${name}' not found`);
-  return file.json();
+  const path = `${SETS_DIR}/${name}.json`;
+  if (!(await exists(path))) err(`Set '${name}' not found`);
+  return JSON.parse(await readFile(path, "utf-8"));
 }
 
 async function saveSet(name: string, set: SetDefinition): Promise<void> {
   await ensureDirs();
-  await Bun.write(`${SETS_DIR}/${name}.json`, JSON.stringify(set, null, 2));
+  await writeFile(`${SETS_DIR}/${name}.json`, JSON.stringify(set, null, 2));
 }
 
 function getOrCreateSetState(state: GlobalState, setKey: string, set: SetDefinition): SetState {
@@ -126,15 +134,13 @@ async function cmdInit(name: string, fromFile?: string): Promise<void> {
   await ensureDirs();
 
   const setPath = `${SETS_DIR}/${name}.json`;
-  const existing = Bun.file(setPath);
-  if (await existing.exists()) err(`Set '${name}' already exists`);
+  if (await exists(setPath)) err(`Set '${name}' already exists`);
 
   let set: SetDefinition;
 
   if (fromFile) {
-    const source = Bun.file(fromFile);
-    if (!(await source.exists())) err(`Source file '${fromFile}' not found`);
-    const content = await source.json();
+    if (!(await exists(fromFile))) err(`Source file '${fromFile}' not found`);
+    const content = JSON.parse(await readFile(fromFile, "utf-8"));
     // Strip any execution state if present (legacy format)
     set = {
       name: content.name || name,
@@ -352,12 +358,12 @@ async function cmdStatus(name: string): Promise<void> {
 
 async function cmdList(): Promise<void> {
   await ensureDirs();
-  const glob = new Bun.Glob("*.json");
+  const files = await readdir(SETS_DIR);
   const state = await loadState();
 
   const sets: { name: string; pending: number; done: number; failed: number; errors: number }[] = [];
 
-  for await (const file of glob.scan(SETS_DIR)) {
+  for (const file of files.filter(f => f.endsWith(".json"))) {
     const name = file.replace(".json", "");
     const set = await loadSet(name);
     const setState = getOrCreateSetState(state, name, set);
@@ -376,9 +382,8 @@ async function cmdList(): Promise<void> {
 
 async function cmdReset(name?: string, all?: boolean): Promise<void> {
   if (all) {
-    const file = Bun.file(STATE_FILE);
-    if (await file.exists()) {
-      await Bun.write(STATE_FILE, "{}");
+    if (await exists(STATE_FILE)) {
+      await writeFile(STATE_FILE, "{}");
     }
     out({ reset: "all" });
     return;

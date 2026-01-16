@@ -1,16 +1,22 @@
 {
-  "name": "arnold-curls",
+  "name": "@anthropic/arnold-curls",
   "version": "2.0.0",
   "description": "GraphQL API flow runner with multi-set support - execute flows step-by-step with context passing",
   "type": "module",
   "scripts": {
-    "arnold": "bun src/arnold.ts",
+    "arnold": "node dist/arnold.js",
+    "dev": "bun src/arnold.ts",
     "test": "bun test",
-    "build": "mkdir -p bin && bun build src/arnold.ts --compile --outfile bin/arnold"
+    "build": "bun build src/arnold.ts --outfile dist/arnold.js --target node",
+    "build:standalone": "mkdir -p bin && bun build src/arnold.ts --compile --outfile bin/arnold",
+    "prepublishOnly": "npm run build"
   },
   "bin": {
-    "arnold": "./bin/arnold"
+    "arnold": "./dist/arnold.js"
   },
+  "files": [
+    "dist"
+  ],
   "keywords": [
     "graphql",
     "api",
@@ -19,7 +25,11 @@
   ],
   "author": "",
   "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/node": "^20"
   }
 }
