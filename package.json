@@ -1,5 +1,5 @@
 {
-  "name": "@anthropic/arnold-curls",
+  "name": "@housein_isprogramming/arnold-curls",
   "version": "2.0.0",
   "description": "GraphQL API flow runner with multi-set support - execute flows step-by-step with context passing",
   "type": "module",
@@ -12,7 +12,7 @@
     "prepublishOnly": "npm run build"
   },
   "bin": {
-    "arnold": "./dist/arnold.js"
+    "arnold": "dist/arnold.js"
   },
   "files": [
     "dist"
