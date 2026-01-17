@@ -455,6 +455,57 @@ async function cmdStatus(name: string): Promise<void> {
   });
 }
 
+async function cmdPreview(name: string, stepIndex?: number): Promise<void> {
+  const set = await loadSet(name);
+  const state = await loadState();
+  const setState = getOrCreateSetState(state, name, set);
+  const env = await loadEnv();
+
+  const context = { ...setState.context, ...env };
+
+  let targetIndex: number;
+  if (stepIndex !== undefined) {
+    if (stepIndex < 0 || stepIndex >= set.steps.length) {
+      err(`Step index ${stepIndex} out of range (0-${set.steps.length - 1})`);
+    }
+    targetIndex = stepIndex;
+  } else {
+    targetIndex = setState.steps.findIndex(s => s.status === "pending");
+    if (targetIndex === -1) {
+      out({ error: "No pending steps to preview", set: set.name });
+      process.exit(0);
+    }
+  }
+
+  const stepDef = set.steps[targetIndex];
+
+  const resolvedQuery = substituteContext(stepDef.query, context);
+  const resolvedVariables = stepDef.variables
+    ? JSON.parse(substituteContext(JSON.stringify(stepDef.variables), context))
+    : undefined;
+
+  const resolvedHeaders: Record<string, string> = { "Content-Type": "application/json" };
+  if (set.headers) {
+    for (const [k, v] of Object.entries(set.headers)) {
+      resolvedHeaders[k] = substituteContext(v, context);
+    }
+  }
+
+  out({
+    preview: true,
+    step: stepDef.name,
+    index: targetIndex,
+    status: setState.steps[targetIndex].status,
+    url: set.baseUrl,
+    headers: resolvedHeaders,
+    body: {
+      query: resolvedQuery,
+      variables: resolvedVariables,
+    },
+    context,
+  });
+}
+
 async function cmdList(): Promise<void> {
   await ensureDirs();
   const files = await readdir(SETS_DIR);
@@ -514,6 +565,8 @@ function usage(): never {
       "run <name> --step <N>": "Run specific step by index",
       "run <name> --full": "Run all steps (stop on error)",
       "status <name>": "Show set status",
+      "preview <name>": "Preview next step with resolved variables",
+      "preview <name> --step <N>": "Preview specific step",
       "list": "List all sets",
       "reset <name>": "Clear state for set",
       "reset --all": "Clear all state",
@@ -591,6 +644,20 @@ async function main(): Promise<void> {
       const name = args[1];
       if (!name) usage();
       await cmdStatus(name);
+      break;
+    }
+    case "preview": {
+      const name = args[1];
+      if (!name) usage();
+
+      const stepIdx = args.indexOf("--step");
+      const stepIndex = stepIdx !== -1 ? parseInt(args[stepIdx + 1], 10) : undefined;
+
+      if (stepIndex !== undefined && isNaN(stepIndex)) {
+        err("--step requires a numeric index");
+      }
+
+      await cmdPreview(name, stepIndex);
       break;
     }
     case "list": {
