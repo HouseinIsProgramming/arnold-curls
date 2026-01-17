@@ -21,7 +21,7 @@ export interface StepState {
   status: StepStatus;
   duration?: number;
   result?: unknown;
-  error?: string;
+  error?: string | unknown[];  // Allow array for GraphQL errors
   validationError?: string;
 }
 

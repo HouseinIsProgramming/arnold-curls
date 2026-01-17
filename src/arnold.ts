@@ -398,7 +398,7 @@ async function executeStep(
 
     if (data.errors) {
       stepState.status = "error";
-      stepState.error = JSON.stringify(data.errors);
+      stepState.error = data.errors;  // Keep as object, not stringified
       stepState.result = data;
       return;
     }
