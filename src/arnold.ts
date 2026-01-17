@@ -25,6 +25,14 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
+async function readStdin(): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString("utf-8");
+}
+
 async function ensureDirs(): Promise<void> {
   await mkdir(SETS_DIR, { recursive: true });
 }
@@ -130,7 +138,7 @@ function validateExpected(
 // Commands
 // ============================================================================
 
-async function cmdInit(name: string, fromFile?: string): Promise<void> {
+async function cmdInit(name: string, fromFile?: string, fromStdin?: boolean): Promise<void> {
   await ensureDirs();
 
   const setPath = `${SETS_DIR}/${name}.json`;
@@ -138,7 +146,30 @@ async function cmdInit(name: string, fromFile?: string): Promise<void> {
 
   let set: SetDefinition;
 
-  if (fromFile) {
+  if (fromStdin) {
+    const input = await readStdin();
+    if (!input.trim()) err("No input received from stdin");
+
+    let content: Record<string, unknown>;
+    try {
+      content = JSON.parse(input);
+    } catch {
+      err("Invalid JSON from stdin");
+    }
+
+    set = {
+      name: content.name as string || name,
+      baseUrl: content.baseUrl as string,
+      headers: content.headers as Record<string, string> | undefined,
+      steps: ((content.steps as Record<string, unknown>[]) || []).map((s) => ({
+        name: s.name as string,
+        query: s.query as string,
+        variables: s.variables as Record<string, unknown> | undefined,
+        extractToContext: s.extractToContext as Record<string, string> | undefined,
+        expected: s.expected as Record<string, unknown> | undefined,
+      })),
+    };
+  } else if (fromFile) {
     if (!(await exists(fromFile))) err(`Source file '${fromFile}' not found`);
     const content = JSON.parse(await readFile(fromFile, "utf-8"));
     // Strip any execution state if present (legacy format)
@@ -477,6 +508,7 @@ function usage(): never {
     commands: {
       "init <name>": "Create empty set",
       "init <name> --from <file>": "Create set from file",
+      "init <name> --stdin": "Create set from stdin JSON",
       "add-step <name>": "Add step to set",
       "run <name>": "Run next pending step",
       "run <name> --step <N>": "Run specific step by index",
@@ -502,7 +534,13 @@ async function main(): Promise<void> {
       if (!name) usage();
       const fromIdx = args.indexOf("--from");
       const fromFile = fromIdx !== -1 ? args[fromIdx + 1] : undefined;
-      await cmdInit(name, fromFile);
+      const fromStdin = args.includes("--stdin");
+
+      if (fromFile && fromStdin) {
+        err("Cannot use both --from and --stdin");
+      }
+
+      await cmdInit(name, fromFile, fromStdin);
       break;
     }
     case "add-step": {
