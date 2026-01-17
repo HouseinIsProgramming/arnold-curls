@@ -223,19 +223,18 @@ async function cmdAddStep(
   });
 }
 
-async function cmdRun(name: string, full: boolean): Promise<void> {
+async function cmdRun(name: string, full: boolean, stepIndex?: number): Promise<void> {
   const set = await loadSet(name);
   const state = await loadState();
   const setState = getOrCreateSetState(state, name, set);
   const env = await loadEnv();
 
-  // Merge env into context
   const context = { ...setState.context, ...env };
 
   if (full) {
     await runFull(set, setState, context, state);
   } else {
-    await runSingle(set, setState, context, state);
+    await runSingle(set, setState, context, state, stepIndex);
   }
 }
 
@@ -243,12 +242,24 @@ async function runSingle(
   set: SetDefinition,
   setState: SetState,
   context: Record<string, unknown>,
-  state: GlobalState
+  state: GlobalState,
+  targetIndex?: number
 ): Promise<void> {
-  const stepIndex = setState.steps.findIndex(s => s.status === "pending");
-  if (stepIndex === -1) {
-    out({ error: "No pending steps", set: set.name });
-    process.exit(0);
+  let stepIndex: number;
+
+  if (targetIndex !== undefined) {
+    if (targetIndex < 0 || targetIndex >= set.steps.length) {
+      err(`Step index ${targetIndex} out of range (0-${set.steps.length - 1})`);
+    }
+    stepIndex = targetIndex;
+    // Reset this step to pending so it can be re-run
+    setState.steps[stepIndex].status = "pending";
+  } else {
+    stepIndex = setState.steps.findIndex(s => s.status === "pending");
+    if (stepIndex === -1) {
+      out({ error: "No pending steps", set: set.name });
+      process.exit(0);
+    }
   }
 
   const stepDef = set.steps[stepIndex];
@@ -468,6 +479,7 @@ function usage(): never {
       "init <name> --from <file>": "Create set from file",
       "add-step <name>": "Add step to set",
       "run <name>": "Run next pending step",
+      "run <name> --step <N>": "Run specific step by index",
       "run <name> --full": "Run all steps (stop on error)",
       "status <name>": "Show set status",
       "list": "List all sets",
@@ -526,7 +538,15 @@ async function main(): Promise<void> {
       const name = args[1];
       if (!name) usage();
       const full = args.includes("--full");
-      await cmdRun(name, full);
+
+      const stepIdx = args.indexOf("--step");
+      const stepIndex = stepIdx !== -1 ? parseInt(args[stepIdx + 1], 10) : undefined;
+
+      if (stepIndex !== undefined && isNaN(stepIndex)) {
+        err("--step requires a numeric index");
+      }
+
+      await cmdRun(name, full, stepIndex);
       break;
     }
     case "status": {
