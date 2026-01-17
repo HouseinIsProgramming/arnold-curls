@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import type { SetDefinition, SetState, GlobalState, StepState } from "./types";
+import type { SetDefinition, SetState, GlobalState, StepState, StepDefinition } from "./types";
 import { SETS_DIR, STATE_FILE, ENV_FILE } from "./types";
 import { mkdir, readFile, writeFile, readdir, access } from "fs/promises";
 
@@ -164,6 +164,63 @@ async function cmdInit(name: string, fromFile?: string): Promise<void> {
 
   await saveSet(name, set);
   out({ created: name, path: setPath });
+}
+
+async function cmdAddStep(
+  setName: string,
+  stepName: string,
+  query: string,
+  variables?: string,
+  extractToContext?: string,
+  expected?: string
+): Promise<void> {
+  const set = await loadSet(setName);
+
+  const step: StepDefinition = {
+    name: stepName,
+    query,
+  };
+
+  if (variables) {
+    try {
+      step.variables = JSON.parse(variables);
+    } catch {
+      err(`Invalid JSON for --variables: ${variables}`);
+    }
+  }
+
+  if (extractToContext) {
+    try {
+      step.extractToContext = JSON.parse(extractToContext);
+    } catch {
+      err(`Invalid JSON for --extract: ${extractToContext}`);
+    }
+  }
+
+  if (expected) {
+    try {
+      step.expected = JSON.parse(expected);
+    } catch {
+      err(`Invalid JSON for --expected: ${expected}`);
+    }
+  }
+
+  set.steps.push(step);
+  await saveSet(setName, set);
+
+  // Update state to include new pending step
+  const state = await loadState();
+  if (state[setName]) {
+    state[setName].steps.push({ status: "pending" });
+    await saveState(state);
+  }
+
+  out({
+    added: stepName,
+    set: setName,
+    index: set.steps.length - 1,
+    step,
+  });
 }
 
 async function cmdRun(name: string, full: boolean): Promise<void> {
@@ -409,6 +466,7 @@ function usage(): never {
     commands: {
       "init <name>": "Create empty set",
       "init <name> --from <file>": "Create set from file",
+      "add-step <name>": "Add step to set",
       "run <name>": "Run next pending step",
       "run <name> --full": "Run all steps (stop on error)",
       "status <name>": "Show set status",
@@ -433,6 +491,35 @@ async function main(): Promise<void> {
       const fromIdx = args.indexOf("--from");
       const fromFile = fromIdx !== -1 ? args[fromIdx + 1] : undefined;
       await cmdInit(name, fromFile);
+      break;
+    }
+    case "add-step": {
+      const setName = args[1];
+      if (!setName) usage();
+
+      const nameIdx = args.indexOf("--name");
+      const queryIdx = args.indexOf("--query");
+
+      if (nameIdx === -1 || queryIdx === -1) {
+        err("add-step requires --name and --query");
+      }
+
+      const stepName = args[nameIdx + 1];
+      const query = args[queryIdx + 1];
+
+      if (!stepName || !query) {
+        err("add-step requires --name and --query values");
+      }
+
+      const varsIdx = args.indexOf("--variables");
+      const extractIdx = args.indexOf("--extract");
+      const expectedIdx = args.indexOf("--expected");
+
+      const variables = varsIdx !== -1 ? args[varsIdx + 1] : undefined;
+      const extractToContext = extractIdx !== -1 ? args[extractIdx + 1] : undefined;
+      const expected = expectedIdx !== -1 ? args[expectedIdx + 1] : undefined;
+
+      await cmdAddStep(setName, stepName, query, variables, extractToContext, expected);
       break;
     }
     case "run": {
