@@ -637,6 +637,10 @@ async function main(): Promise<void> {
         err("--step requires a numeric index");
       }
 
+      if (full && stepIndex !== undefined) {
+        err("Cannot use both --full and --step");
+      }
+
       await cmdRun(name, full, stepIndex);
       break;
     }
