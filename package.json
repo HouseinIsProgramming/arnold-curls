@@ -1,6 +1,6 @@
 {
   "name": "@housein_isprogramming/arnold-curls",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "GraphQL API flow runner with multi-set support - execute flows step-by-step with context passing",
   "type": "module",
   "scripts": {
