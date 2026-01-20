@@ -1,0 +1,5 @@
+{
+  "name": "arnold-curls",
+  "version": "2.1.0",
+  "description": "GraphQL API flow runner - create and execute multi-step GraphQL flows with context passing"
+}

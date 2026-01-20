@@ -15,13 +15,19 @@
     "arnold": "dist/arnold.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "plugin.json",
+    "agents",
+    "skills",
+    "commands"
   ],
   "keywords": [
     "graphql",
     "api",
     "flow",
-    "testing"
+    "testing",
+    "claude-code",
+    "claude-code-plugin"
   ],
   "author": "",
   "license": "MIT",

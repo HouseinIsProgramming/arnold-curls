@@ -2,51 +2,80 @@
 
 GraphQL API flow runner with multi-set support. Execute flows step-by-step with context passing and response validation.
 
+## Installation
+
+### CLI (npm package)
+
+```bash
+npm install -D @housein_isprogramming/arnold-curls
+```
+
+Then use via npx:
+
+```bash
+npx arnold init my-api
+npx arnold run my-api
+npx arnold status my-api
+```
+
+### Claude Code Plugin
+
+After installing the npm package, install the Claude Code plugin:
+
+```bash
+claude /plugin install node_modules/@housein_isprogramming/arnold-curls
+```
+
+Then use the `@arnold` agent in Claude:
+
+```
+@arnold create a flow to test user registration and login
+@arnold run my-api --full
+```
+
+Or use the slash commands:
+
+```
+/arnold-list
+/arnold-status my-api
+/arnold-run my-api --full
+```
+
 ## Quick Start
 
 ```bash
 # Initialize a set
-bun run arnold init my-api
+npx arnold init my-api
 
 # Edit .arnold/sets/my-api.json with your steps
 # Run steps one by one
-bun run arnold run my-api
+npx arnold run my-api
 
 # Or run all at once
-bun run arnold run my-api --full
+npx arnold run my-api --full
 
 # Check status
-bun run arnold status my-api
-```
-
-## Installation
-
-```bash
-git clone <repo-url>
-cd arnold-curls
-bun install
-```
-
-### Build standalone binary
-
-```bash
-bun run build
-./bin/arnold list
+npx arnold status my-api
 ```
 
 ## Commands
 
 ```bash
-arnold init <name>              # Create empty set
-arnold init <name> --from <f>   # Create from existing JSON file
+npx arnold init <name>              # Create empty set
+npx arnold init <name> --from <f>   # Create from existing JSON file
+npx arnold init <name> --stdin      # Create from stdin
 
-arnold run <name>               # Run next pending step
-arnold run <name> --full        # Run ALL steps, stop on first error
+npx arnold run <name>               # Run next pending step
+npx arnold run <name> --full        # Run ALL steps, stop on first error
+npx arnold run <name> --step <N>    # Run specific step (0-indexed)
 
-arnold status <name>            # Show set status
-arnold list                     # List all sets
-arnold reset <name>             # Clear execution state for set
-arnold reset --all              # Clear ALL execution state
+npx arnold preview <name>           # Preview next step (resolved variables)
+npx arnold preview <name> --step <N> # Preview specific step
+
+npx arnold status <name>            # Show set status
+npx arnold list                     # List all sets
+npx arnold reset <name>             # Clear execution state for set
+npx arnold reset --all              # Clear ALL execution state
 ```
 
 ## File Structure
